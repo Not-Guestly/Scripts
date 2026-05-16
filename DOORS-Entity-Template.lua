@@ -1,0 +1,250 @@
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+return function(config)
+
+	config = config or {}
+	
+	local NAME = config.Name or "GhostEntity"
+	local FACE_TEXTURE = config.Face or "rbxassetid://0"
+	local SPAWN_CFRAME = config.CFrame or CFrame.new(0,5,0)
+
+	local LIGHT_COLOR = config.PointLightColor or Color3.fromRGB(255,255,255)
+	local LIGHT_RANGE = config.LightRange or 10
+	local LIGHT_BRIGHTNESS = config.LightBrightness or 1
+
+	local ENTITY_VIBRATION = config.EntityVibration or 5
+	local SCREEN_VIBRATION = config.ScreenVibration or 5
+
+	local VFX_IMAGE = config.EntityVFXImage or "rbxassetid://0"
+
+	local VFX_AMOUNT = config.VFXAmount or 8
+	local VFX_DISTANCE = config.VFXDistance or 4
+	local VFX_SPEED = config.VFXSpeed or 1
+
+	local model = Instance.new("Model")
+	model.Name = NAME
+	model.Parent = workspace
+
+	local core = Instance.new("Part")
+	core.Size = Vector3.new(2,2,2)
+	core.Anchored = true
+	core.CanCollide = false
+	core.Transparency = 1
+	core.CFrame = SPAWN_CFRAME
+	core.Parent = model
+
+	model.PrimaryPart = core
+
+local sound = Instance.new("Sound")
+sound.Name = "EntitySound"
+
+sound.SoundId = config.EntitySound or "rbxassetid://0"
+sound.Volume = config.SoundVolume or 1
+
+sound.RollOffMaxDistance = config.SoundMaxDistance or 100
+sound.RollOffMinDistance = config.SoundMinDistance or 1
+
+sound.Looped = (config.SoundLooped ~= false)
+
+sound.RollOffMode = Enum.RollOffMode.InverseTapered
+sound.EmitterSize = 10
+
+sound.Parent = core
+
+if sound.SoundId ~= "rbxassetid://0" then
+	sound:Play()
+end
+
+local facePart = Instance.new("Part")
+facePart.Size = Vector3.new(1,1,1)
+facePart.Anchored = true
+facePart.CanCollide = false
+facePart.Transparency = 1
+facePart.CFrame = core.CFrame
+facePart.Parent = model
+
+local att = Instance.new("Attachment")
+att.Parent = facePart
+
+local faceParticle = Instance.new("ParticleEmitter")
+faceParticle.Texture = config.Face or "rbxassetid://0"
+
+faceParticle.Rate = 8
+faceParticle.Lifetime = NumberRange.new(0.7, 0.7)
+
+faceParticle.Speed = NumberRange.new(0)
+faceParticle.SpreadAngle = Vector2.new(0,0)
+
+faceParticle.LightEmission = 0
+faceParticle.Brightness = 1
+faceParticle.LightInfluence = 1
+
+local faceSize = config.EntityFaceSize or 4
+
+faceParticle.Size = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, faceSize),
+	NumberSequenceKeypoint.new(1, faceSize)
+})
+
+faceParticle.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0),
+	NumberSequenceKeypoint.new(1, 0)
+})
+
+faceParticle.Parent = att
+
+	local light = Instance.new("PointLight")
+	light.Color = LIGHT_COLOR
+	light.Range = LIGHT_RANGE
+	light.Brightness = LIGHT_BRIGHTNESS
+	light.Parent = core
+
+local vfxFolder = Instance.new("Folder")
+vfxFolder.Parent = model
+
+local vfxEmitters = {}
+
+for i = 1, VFX_AMOUNT do
+
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.Transparency = 1
+	p.Size = Vector3.new(1,1,1)
+	p.Parent = vfxFolder
+
+	local att = Instance.new("Attachment")
+	att.Parent = p
+
+	local pe = Instance.new("ParticleEmitter")
+
+	pe.Texture = VFX_IMAGE
+
+	pe.Rate = 6
+	pe.Lifetime = NumberRange.new(0.5, 0.8)
+
+	pe.Speed = NumberRange.new(0)
+	pe.SpreadAngle = Vector2.new(0,0)
+
+	pe.LightEmission = 0
+	pe.Brightness = 1
+	pe.LightInfluence = 1
+
+	pe.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 2),
+		NumberSequenceKeypoint.new(1, 2)
+	})
+
+	pe.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+
+	pe.Rotation = NumberRange.new(0, 0)
+	pe.RotSpeed = NumberRange.new(0, 0)
+
+	pe.Parent = att
+
+	table.insert(vfxEmitters, {
+		part = p,
+		angle = (360 / VFX_AMOUNT) * i,
+		offset = Vector3.new(),
+		target = Vector3.new(),
+		tick = tick()
+	})
+
+end
+
+	task.spawn(function()
+		while model.Parent do
+
+			local up = TweenService:Create(core,
+				TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+				{CFrame = core.CFrame + Vector3.new(0,1,0)}
+			)
+
+			up:Play()
+			up.Completed:Wait()
+
+			local down = TweenService:Create(core,
+				TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+				{CFrame = core.CFrame - Vector3.new(0,1,0)}
+			)
+
+			down:Play()
+			down.Completed:Wait()
+
+		end
+	end)
+
+	local spin = 0
+
+	local con
+	con = RunService.RenderStepped:Connect(function(dt)
+
+		if not model.Parent then
+			con:Disconnect()
+			return
+		end
+
+		spin += dt * 120 * VFX_SPEED
+
+		local ox = math.random(-ENTITY_VIBRATION, ENTITY_VIBRATION)/50
+		local oy = math.random(-ENTITY_VIBRATION, ENTITY_VIBRATION)/50
+
+		facePart.CFrame = core.CFrame * CFrame.new(ox,oy,0)
+
+		local camOffset = Vector3.new(
+			math.random(-SCREEN_VIBRATION, SCREEN_VIBRATION)/100,
+			math.random(-SCREEN_VIBRATION, SCREEN_VIBRATION)/100,
+			0
+		)
+
+		workspace.CurrentCamera.CFrame =
+			workspace.CurrentCamera.CFrame * CFrame.new(camOffset)
+
+for _,obj in pairs(vfxEmitters) do
+
+	local angle = math.rad(obj.angle + spin)
+
+	local orbitX = math.cos(angle) * VFX_DISTANCE
+	local orbitZ = math.sin(angle) * VFX_DISTANCE
+	local orbitY = math.sin(angle * 2)
+
+	if tick() - obj.tick > math.random(1,3)/2 then
+		obj.target = Vector3.new(
+			math.random(-40,40)/10,
+			math.random(-40,40)/10,
+			math.random(-40,40)/10
+		)
+		obj.tick = tick()
+	end
+
+	obj.offset = obj.offset:Lerp(obj.target, 0.03)
+
+	local finalPos = Vector3.new(orbitX, orbitY, orbitZ) + obj.offset
+
+	obj.part.CFrame = core.CFrame * CFrame.new(finalPos)
+
+end
+
+	end)
+
+	local entity = {}
+
+	function entity:SetCFrame(cf)
+		core.CFrame = cf
+	end
+
+	function entity:GetModel()
+		return model
+	end
+
+	function entity:Destroy()
+		con:Disconnect()
+		model:Destroy()
+	end
+
+	return entity
+end
